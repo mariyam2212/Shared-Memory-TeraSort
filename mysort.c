@@ -1,429 +1,288 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/time.h>
-
-int LENGTH = 100;
-
-long int findSize(char file_name[])
+#include <sys/stat.h>
+#include <string.h>
+#include <pthread.h>
+#define USE "./mysort <input file> <output file> <number of threads>"
+#define BUFFER_SIZE 100
+ 
+ 
+struct stat st;
+// Merges two subarrays of arr[].
+// First subarray : arr[l..m]
+// Second subarray : arr[m+1..r]
+int test;
+int NUMBERS_PER_THREAD;
+int NUM_THREADS;
+int OFFSET;
+char **data;
+void* thread_merge_sort(void* arg);
+void merge_sections_of_array(char *arr[], int number, int aggregation,int length, int merge_sections_of_array);
+void merge(char *arr[], int l, int m, int r)
 {
-    FILE *fp = fopen(file_name, "r+");
-    if (fp == NULL)
-    {
-        printf("FILE DOESN't EXIST!\n");
-        return -1;
+    int i, j, k;
+    int n1 = m - l + 1;
+    int n2 = r - m;
+ 
+    /* create temp arrays */
+    char **L = calloc(n1,sizeof(char*));
+    char **R = calloc(n2,sizeof(char*));
+   // char *L[n1], *R[n2];
+ 
+    /* Copy data to arrays L and R */
+    for (i = 0; i < n1; i++){
+        L[i] = arr[l + i];
+       // printf("L1: %c\n",*L[i]);
     }
-
-    fseek(fp, 0L, SEEK_END);
-
-    long int res = ftell(fp);
-    res = res / (1024 * 1024 * 1024);
-    fclose(fp);
-
-    return res;
-}
-
-int merge(char **list, int leftStart, int leftEnd, int rightStart, int rightEnd)
-{
-
-    int leftLength = leftEnd - leftStart;
-    int rightLength = rightEnd - rightStart;
-
-    char *leftHalf = (char *)malloc(leftLength * sizeof(char *));
-
-    char *rightHalf = (char *)malloc(rightLength * sizeof(char *));
-
-    int r = 0;
-    int l = 0;
-    int i = 0;
-
-    for (i = leftStart; i < leftEnd; i++, l++)
-    {
-
-        leftHalf[l] = (char *)malloc(LENGTH * sizeof(char));
-        strcpy(leftHalf[l], list[i]);
-    }
-
-    for (i = rightStart; i < rightEnd; i++, r++)
-    {
-
-        rightHalf[r] = (char *)malloc(LENGTH * sizeof(char));
-        strcpy(rightHalf[r], list[i]);
-    }
-
-    for (i = leftStart, r = 0, l = 0; l < leftLength && r < rightLength; i++)
-    {
-        if (strcmp(leftHalf[l], rightHalf[r]) < 0)
-        {
-            strcpy(list[i], leftHalf[l++]);
+ 
+    for (j = 0; j < n2; j++)
+        R[j] = arr[m + 1 + j];
+ 
+    /* Merge the temp arrays back into arr[l..r]*/
+    i = 0; // Initial index of first subarray
+    j = 0; // Initial index of second subarray
+    k = 0; 
+    while (i < n1 && j < n2) {
+ 
+        if (*L[i] < *R[j]) {
+            arr[l+k] = L[i];
+            i++;
         }
-        else
+        else if(*L[i] == *R[j]){    //checking if the elements are same
+            for(int z=1;z<10;z++){
+                if(*(L[i]+z) == *(R[j]+z)){
+                    continue;
+                }
+                else if(*(L[i]+z) < *(R[j]+z)){
+                    arr[l+k] = L[i];
+                    i++;
+                    break;
+                }
+                else{
+                    arr[l+k] = R[j];
+                    j++;
+                    break;
+                }
+            }
+        }
+        else {
+            arr[l+k] = R[j];
+            j++;
+        }
+        k++;
+    }
+ 
+ 
+ 
+ 
+    /* Copy the remaining elements of L[], if there
+    are any */
+    while (i < n1) {
+        arr[l+k] = L[i];
+        i++;
+        k++;
+    }
+ 
+    /* Copy the remaining elements of R[], if there
+    are any */
+    while (j < n2) {
+        arr[l+k] = R[j];
+        j++;
+        k++;
+    }
+ 
+}
+ 
+/* l is for left index and r is right index of the
+sub-array of arr to be sorted */
+void mergeSort(char *arr[], int l, int r)
+{   
+    if (l < r) {
+        // Same as (l+r)/2, but avoids overflow for
+        // large l and h
+        int m = l + (r - l) / 2;
+ 
+        // Sort first and second halves
+        mergeSort(arr, l, m);
+        mergeSort(arr, m + 1, r);
+ 
+        merge(arr, l, m, r);
+    }
+}
+void printArray(char *A[], int size)
+{
+    printf("print arr: \n");
+    int i;
+    for (i = 0; i < size; i++)
         {
-            strcpy(list[i], rightHalf[r++]);
+            printf("i:%d %s\n",i,A[i]);
+            printf("\n");
+    }
+}
+// sorting function - reads and write the data
+void mysort(char* inputFile, char* outputFile, int numThreads)
+{
+    char* buffer;
+    FILE* fin;
+    FILE* fout;
+    int i=0;
+    test = 100;
+    // find size of the file
+    stat(inputFile,&st);
+    long int size_of_file = st.st_size/100;
+    printf("size %li\n",size_of_file);
+    printf("n_threads:%d",numThreads);
+ 
+ 
+    // creating the array for sorting
+     data = calloc(size_of_file,sizeof(char*));
+    // Open input file
+    fin = fopen(inputFile, "r");
+    if (fin == NULL) {
+        fprintf(stderr, "fopen(%s) failed", inputFile);
+        return;
+    }
+ 
+    // Allocate memory for the buffer
+    buffer = (char*) malloc(sizeof(char) * BUFFER_SIZE);
+ 
+    // Store the data in data char array for sorting
+ 
+ 
+ 
+     while (fread(&buffer[0], sizeof(char), BUFFER_SIZE, fin) == BUFFER_SIZE) {
+        data[i] = calloc(BUFFER_SIZE,sizeof(char));
+ 
+       for(int z=0;z<98;z++){
+               data[i][z]=buffer[z];
+       }
+      // printf("i:%d %s\n",i,data[i]);
+       i++;
+   }
+ 
+ 
+    // Clear buffer and close files
+    free(buffer);
+ 
+    fclose(fin);
+ 
+   // printArray(data, size_of_file);
+ 
+     OFFSET = size_of_file  % numThreads;
+     NUMBERS_PER_THREAD = size_of_file / numThreads;
+     NUM_THREADS=numThreads;
+ 
+    pthread_t threads[numThreads];
+    void **args = (void **) malloc(sizeof(void*) * 3);
+    int thread_data[3];
+    // create threads
+    args[0]=*data;
+    thread_data[0]=OFFSET;
+    thread_data[1]=NUMBERS_PER_THREAD;
+    thread_data[2]=NUM_THREADS;
+    for (long i = 0; i < numThreads; i ++) {
+    	//thread_data[3]=i;
+    	args[1]=thread_data;
+    	args[2]=&i;
+        int rc = pthread_create(&threads[i], NULL, thread_merge_sort, (void *)i); 
+        if (rc){
+            printf("ERROR; return code from pthread_create() is %d\n", rc);
+            exit(-1);
         }
     }
-
-    for (; l < leftLength; i++, l++)
-    {
-        strcpy(list[i], leftHalf[l]);
+    // join threads
+    for(int i = 0; i < numThreads; i++) {
+        pthread_join(threads[i], NULL);
     }
-    for (; r < rightLength; i++, r++)
-    {
-        strcpy(list[i], rightHalf[r]);
+ 
+   merge_sections_of_array(data, numThreads,1,size_of_file,NUMBERS_PER_THREAD);
+ 
+    printf("\nSorted array is \n");
+   // printArray(data, size_of_file);
+ 
+    // Open output file
+    fout = fopen(outputFile, "w");
+    if (fout == NULL) {
+        fprintf(stderr, "fopen(%s) failed", outputFile);
+        return;
     }
-    l = 0;
-    r = 0;
-    for (i = leftStart; i < leftEnd; i++, l++)
-    {
-        free(leftHalf[l]);
+   for(i=0;i<size_of_file;i++){
+    for(int z=0;z<99;z++){
+    	buffer[z]=data[i][z];
+    	}
+    fwrite(&buffer[0], sizeof(char), BUFFER_SIZE, fout);
     }
-
-    for (i = rightStart; i < rightEnd; i++, r++)
-    {
-
-        free(rightHalf[r]);
-    }
-
-    free(leftHalf);
-
-    free(rightHalf);
-
-    return 0;
+    // Clear the buffer and close files
+    fclose(fout);
 }
-
-int mergeSort_r(int left, int right, char **list)
-{
-    if (right - left <= 1)
-    {
-        return 0;
+ 
+ /* merge locally sorted sections */
+ void merge_sections_of_array(char *arr[], int number, int aggregation,int length,int NUMBERS_PER_THREAD) {
+ 
+    for(int i = 0; i < number; i = i + 2) {
+        int left = i * (NUMBERS_PER_THREAD * aggregation);
+        int right = ((i + 2) * NUMBERS_PER_THREAD * aggregation) - 1;
+        int middle = left + (NUMBERS_PER_THREAD * aggregation) - 1;
+        if (right >= length) {
+            right = length - 1;
+        }
+        merge(arr, left, middle, right);
     }
-
-    int leftStart = left;
-    int leftEnd = (left + right) / 2;
-    int rightStart = leftEnd;
-    int rightEnd = right;
-
-    mergeSort_r(leftStart, leftEnd, list);
-
-    mergeSort_r(rightStart, rightEnd, list);
-
-    merge(list, leftStart, leftEnd, rightStart, rightEnd);
+    if (number / 2 >= 1) {
+        merge_sections_of_array(arr, number / 2, aggregation * 2,length,NUMBERS_PER_THREAD);
+    }
 }
-
-int mergeSort(char **list, int length)
-{
-    mergeSort_r(0, length, list);
-    return 0;
+ 
+/** assigns work to each thread to perform merge sort */
+void *thread_merge_sort(void* arg)
+{	
+    int thread_id = (long)arg;
+    printf("Offset: %d, NT: %d, NPT: %d, id:%d\n",OFFSET,NUM_THREADS,NUMBERS_PER_THREAD,thread_id);
+ 
+ 
+    int left = thread_id * (NUMBERS_PER_THREAD);
+    int right = (thread_id + 1) * (NUMBERS_PER_THREAD) - 1;
+    if (thread_id == NUM_THREADS - 1) {
+        right += OFFSET;
+    }
+    int middle = left + (right - left) / 2;
+    if (left < right) {
+        mergeSort(data, left, right);
+        mergeSort(data, left + 1, right);
+        merge(data, left, middle, right);
+    }
+    return NULL;
 }
-
-//CHanging values as per the file size 10000000 for 1 gb and 40000000 for 4GB
-int NUMBER_OF_RECORDS = 10000000;
-//int NUMBER_OF_RECORDS = 40000000;
-
-int main(int argc, char **argv)
-{
-    char *inputFile;
-    char *outputFile;
+ 
+int main(int argc, char** argv) {
+    char* inputFile;
+    char* outputFile;
     int numThreads;
     struct timeval start, end;
     double executionTime;
-
-    if (argc != 4)
-    {
-        fprintf("Error in arguments");
+ 
+    if (argc != 4) {
+        fprintf(stderr, USE);
         return 1;
     }
-
+ 
     // Read arguments
     inputFile = argv[1];
     outputFile = argv[2];
     numThreads = atoi(argv[3]);
-
-    char temp;
-    char *Strings = (char *)malloc(NUMBER_OF_RECORDS * sizeof(char *));
-    char array_i[100];
-
-    FILE *fp[2];
+ 
+    // sorting execution and execution time measurement
     gettimeofday(&start, NULL);
-    fp[0] = fopen(inputFile, "r");
-    for (int j = 0; j < NUMBER_OF_RECORDS; j++)
-    {
-        fscanf(fp[0], "%[^\n]%*c", array_i);
-        Strings[j] = (char *)malloc(LENGTH * sizeof(char));
-
-        strcpy(Strings[j], array_i);
-    }
-
-    mergeSort(Strings, NUMBER_OF_RECORDS);
-
-    fp[1] = fopen(outputFile, "w+");
-    for (int j = 0; j < NUMBER_OF_RECORDS; j++)
-    {
-        fprintf(fp[1], "%s\n", Strings[j]);
-    }
+    mysort(inputFile, outputFile, numThreads);
     gettimeofday(&end, NULL);
-    executionTime = ((double)end.tv_sec - (double)start.tv_sec) + ((double)end.tv_usec - (double)start.tv_usec) / 1000000.0;
-
+    executionTime = ((double) end.tv_sec - (double) start.tv_sec)
+            + ((double) end.tv_usec - (double) start.tv_usec) / 1000000.0;
+ 
     printf("input file: %s\n", inputFile);
     printf("output file: %s\n", outputFile);
     printf("number of threads: %d\n", numThreads);
     printf("execution time: %lf\n", executionTime);
-
+ 
     return 0;
 }
-
-/*
-
-TRIED CODE FOR EXTERNAL SORTING
-
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#define NUM 5000000
-#define LEN 100
-
-int merge(char **list, int left_start, int left_end, int right_start, int right_end)
-{
-
-    int left_length = left_end - left_start;
-    int right_length = right_end - right_start;
-
-    char *left_half = (char *)malloc(left_length * sizeof(char *));
-
-    char *right_half = (char *)malloc(right_length * sizeof(char *));
-
-    // char left_half[left_length][LEN];
-    // char right_half[right_length][LEN];
-
-    int r = 0;
-    int l = 0;
-    int i = 0;
-
-    for (i = left_start; i < left_end; i++, l++)
-    {
-
-        left_half[l] = (char *)malloc(LEN * sizeof(char));
-        strcpy(left_half[l], list[i]);
-    }
-
-    for (i = right_start; i < right_end; i++, r++)
-    {
-
-        right_half[r] = (char *)malloc(LEN * sizeof(char));
-        strcpy(right_half[r], list[i]);
-    }
-
-    for (i = left_start, r = 0, l = 0; l < left_length && r < right_length; i++)
-    {
-        if (strcmp(left_half[l], right_half[r]) < 0)
-        {
-            strcpy(list[i], left_half[l++]);
-        }
-        else
-        {
-            strcpy(list[i], right_half[r++]);
-        }
-    }
-
-    for (; l < left_length; i++, l++)
-    {
-        strcpy(list[i], left_half[l]);
-    }
-    for (; r < right_length; i++, r++)
-    {
-        strcpy(list[i], right_half[r]);
-    }
-    l = 0;
-    r = 0;
-    for (i = left_start; i < left_end; i++, l++)
-    {
-        free(left_half[l]);
-    }
-
-    for (i = right_start; i < right_end; i++, r++)
-    {
-
-        free(right_half[r]);
-    }
-
-    free(left_half);
-
-    free(right_half);
-
-    return 0;
-}
-
-int mergeSort_r(int left, int right, char **list)
-{ // Overloaded portion
-    if (right - left <= 1)
-    {
-        return 0;
-    }
-
-    int left_start = left;
-    int left_end = (left + right) / 2;
-    int right_start = left_end;
-    int right_end = right;
-
-    mergeSort_r(left_start, left_end, list);
-
-    mergeSort_r(right_start, right_end, list);
-
-    merge(list, left_start, left_end, right_start, right_end);
-}
-
-int mergeSort(char **list, int length)
-{ // First part
-    mergeSort_r(0, length, list);
-    return 0;
-}
-
-char *file[] = {"file1.txt", "file2.txt",
-                "res1.txt", "res2.txt"};
-
-void splitData()
-{
-    // Change this
-    int count = 10000000;
-
-    // char *Strings = (char *)malloc(NUM * sizeof(char *));
-    char array_i[100];
-    int line = 0;
-    // DATA data[MAX_DATA_SIZE];
-
-    FILE *fp[3];
-    int i, val;
-    fp[2] = fopen("test-file.txt", "r");
-    // printf("This is line 40");
-    //     if (!fp[2]) {
-    //             printf("splitData-fopen failed- %s\n", filename);
-    //             exit(0);
-    //     }
-
-    fp[0] = fopen(file[0], "w+");
-    fp[1] = fopen(file[1], "w+");
-
-    if (!fp[0] || !fp[1])
-    {
-        fcloseall();
-        printf("splitData - fopen failed\n");
-        exit(1);
-    }
-
-    // printf("This is line 54");
-    // char array_i[100];
-    puts("before fscan 1/n");
-    for (i = 0; i < count / 2; i++)
-    {
-        // puts("after iteration");
-        fscanf(fp[2], "%[^\n]%*c", array_i);
-        // Strings[i] = (char *)malloc(LEN * sizeof(char));
-        // printf("%s\n", array_i);
-        // strcpy(Strings[j], array_i);
-        fprintf(fp[0], "%s\n", array_i);
-        // puts("after iteration");
-        //  free();
-
-        // read(data, line, fp[2]);
-        // strcpy(data[line].id, strtok(data[line].id, " "));
-        // fprintf(fp[0], "%s, %s, %s\n", data[line].id, data[line].key, data[line].value);
-    }
-    // printf("This is line 62");
-
-    for (i = count / 2; i < count; i++)
-    {
-        fscanf(fp[2], "%[^\n]%*c", array_i);
-        // Strings[i] = (char *)malloc(LEN * sizeof(char));
-        //  printf("%s", array_i);
-        // strcpy(Strings[j], array_i);
-        fprintf(fp[1], "%s\n", array_i);
-
-        // read(data, line, fp[2]);
-        // strcpy(data[line].id, strtok(data[line].id, " "));
-        // fprintf(fp[1], "%s, %s, %s\n", data[line].id, data[line].key, data[line].value);
-    }
-    fcloseall();
-    return;
-}
-
-int main()
-{
-    char temp;
-    int i = 0;
-
-    char *Strings = (char *)malloc(NUM * sizeof(char *));
-    char array_i[100];
-    FILE *fp[3];
-    // for (int k = 0; k < NUM; k++)
-    // {
-
-    // }
-
-    // printf("Please enter %d strings, one per line:\n", NUM);
-    // for (i; i < 5; i++)
-    // {
-    //     fgets(&Strings[i][0], LEN, stdin);
-    // }
-    puts("before split");
-    // splitData();
-
-    puts("after split");
-    fp[0] = fopen("test-file.txt", "r");
-    for (int j = 0; j < NUM; j++)
-    {
-        fscanf(fp[0], "%[^\n]%*c", array_i);
-        Strings[j] = (char *)malloc(LEN * sizeof(char));
-        // printf("%s\n", array_i);
-        // printf("%s\n", Strings[j]);
-        // printf("%d",j);
-        strcpy(Strings[j], array_i);
-        printf("%s\n", Strings[j]);
-    }
-
-    // printf("%s", &Strings[NUM - 1]);
-    // puts("\nHere are the strings in the order you entered:");
-    // for (i; i < NUM; i++)
-    // {
-    //     printf("%s\n", Strings[i]);
-    // }
-
-    mergeSort(Strings, NUM);
-    // i = 0;
-    // puts("\nHere are the strings in alphabetical order");
-    // for (i; i < NUM; i++)
-    //{
-    //     printf("%s\n", Strings[i]);
-    // }
-
-    i = 0;
-    fp[1] = fopen("file1.txt", "w+");
-    for (int j = 0; j < NUM; j++)
-    {
-        fprintf(fp[1], "%s\n", Strings[j]);
-        printf("%s", Strings[j]);
-    }
-
-    fp[2] = fopen("file2.txt", "w+");
-    for (int j = 0; j < NUM; j++)
-    {
-        fscanf(fp[0], "%[^\n]%*c", array_i);
-        // Strings[j] = (char *)malloc(LEN * sizeof(char));
-        //  printf("%s", array_i);
-        strcpy(Strings[j], array_i);
-    }
-
-    mergeSort(Strings, NUM);
-
-    i = 0;
-    // fp2 = fopen("file2.txt", "w+");
-    for (int j = 0; j < NUM; j++)
-    {
-        fprintf(fp[2], "%s\n", Strings[j]);
-    }
-
-    fcloseall();
-
-    return 0;
-}
-*/
