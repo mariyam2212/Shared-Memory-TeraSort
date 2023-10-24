@@ -1,0 +1,23 @@
+cat linsort4GB.log
+
+avg-cpu:  %user   %nice %system %iowait  %steal   %idle
+           0.04    0.00    0.02    0.01    0.01   99.92
+
+Device             tps    MB_read/s    MB_wrtn/s    MB_dscd/s    MB_read    MB_wrtn    MB_dscd
+xvda              2.83         0.09         0.23         0.00      48206     123548          0
+
+time sort --parallel=8 4GBinput.txt -o result4GB.txt
+
+real	1m10.801s
+user	2m22.606s 
+sys	    0m18.083s
+
+valsort result4GB.txt 
+Records: 43000000
+Checksum: 1480b39989c3c1e
+Duplicate keys: 0
+SUCCESS - all records are in order
+
+
+
+

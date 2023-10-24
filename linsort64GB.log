@@ -1,0 +1,22 @@
+cat linsort64GB.log
+
+avg-cpu:  %user   %nice %system %iowait  %steal   %idle           0.04    0.00    0.02    0.01    0.01   99.92
+
+Device             tps    MB_read/s    MB_wrtn/s    MB_dscd/s    MB_read    MB_wrtn    MB_dscd
+xvda              2.83         0.09         0.23         0.00      644205     1323548          0
+
+time sort --parallel=8 64GBinput.txt -o result64GB.txt
+
+real	10m5.801s
+user	26m06.001s 
+sys	    5m55.030s
+
+valsort result64GB.txt 
+Records: 162000000
+Checksum: 1480b39989c3c1e
+Duplicate keys: 0
+SUCCESS - all records are in order
+
+
+
+
