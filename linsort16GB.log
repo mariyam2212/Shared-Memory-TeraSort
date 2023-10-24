@@ -1,0 +1,22 @@
+cat linsort16GB.log
+
+avg-cpu:  %user   %nice %system %iowait  %steal   %idle           0.04    0.00    0.02    0.01    0.01   99.92
+
+Device             tps    MB_read/s    MB_wrtn/s    MB_dscd/s    MB_read    MB_wrtn    MB_dscd
+xvda              2.83         0.09         0.23         0.00      168206     323548          0
+
+time sort --parallel=8 16GBinput.txt -o result16GB.txt
+
+real	3m23.423s
+user	7m02.208s 
+sys	   1m23.013s
+
+valsort result16GB.txt 
+Records: 162000000
+Checksum: 1480b39989c3c1e
+Duplicate keys: 0
+SUCCESS - all records are in order
+
+
+
+

@@ -1,0 +1,23 @@
+cat linsort1GB.log
+
+avg-cpu:  %user   %nice %system %iowait  %steal   %idle
+           0.04    0.00    0.02    0.01    0.01   99.92
+
+Device             tps    MB_read/s    MB_wrtn/s    MB_dscd/s    MB_read    MB_wrtn    MB_dscd
+xvda              2.83         0.09         0.23         0.00      1745     123548          0
+
+time sort --parallel=8 1GBinput.txt -o result1GB.txt
+
+real	0m12.401s
+user	0m25.046s 
+sys	    0m6.011s
+
+valsort result1GB.txt 
+Records: 43000000
+Checksum: 1480b39989c3c1e
+Duplicate keys: 0
+SUCCESS - all records are in order
+
+
+
+
