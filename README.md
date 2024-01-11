@@ -1,5 +1,6 @@
 # Shared-Memory-TeraSort -- CS553 Cloud Computing
 External Sorting application implemented in a single node shared memory multi-threaded approach. 
+Objective: PA3-Objective.pdf
 
 ## check and test 
 
